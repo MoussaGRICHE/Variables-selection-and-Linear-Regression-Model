@@ -1,0 +1,58 @@
+---
+title: "VSURF_Toys dataset analysis with R"
+output: pdf_document
+date: '2022-10-21'
+---
+
+# INTRODUCTION
+
+
+# DATA ANALYSIS
+
+## DATA PREPARATION
+
+### Upload Data
+
+```{r}
+library(VSURF)
+data(toys)
+head(toys)
+```
+
+
+```{r}
+```
+
+```{r}
+
+```
+
+
+
+## DATA VIZUALISATION
+```{r}
+```
+
+
+```{r}
+```
+
+```{r}
+
+```
+
+## DATA MODELING
+```{r}
+```
+
+
+```{r}
+```
+
+```{r}
+
+```
+
+
+# CONCLUSION
+

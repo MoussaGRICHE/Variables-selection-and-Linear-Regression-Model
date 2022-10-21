@@ -1,0 +1,75 @@
+---
+title: "Fund dataset analysis with R"
+output: pdf_document
+date: '2022-10-21'
+---
+
+# INTRODUCTION
+
+
+# DATA ANALYSIS
+
+## DATA PREPARATION
+
+### Upload Data
+```{r}
+Fund <- read.table(file="C:/Users/lahor/Desktop/DSTI/Advenced Statistic/Project/VSURF_Toys-and-Fund-datasets-analysis-with-R/Data/fund.txt", header = FALSE)
+```
+
+
+```{r}
+head(Fund)
+```
+
+```{r}
+names(Fund)
+
+```
+```{r}
+library(dplyr, quietly = TRUE)
+Fund <- Fund %>% dplyr::rename(Y = V1, X = V2)
+```
+
+```{r}
+names(Fund)
+```
+```{r}
+summary(Fund$Y)
+```
+
+```{r}
+summary(Fund$X)
+```
+
+
+
+
+
+
+## DATA VIZUALISATION
+```{r}
+```
+
+
+```{r}
+```
+
+```{r}
+
+```
+
+## DATA MODELING
+```{r}
+```
+
+
+```{r}
+```
+
+```{r}
+
+```
+
+
+# CONCLUSION
+
