@@ -4,10 +4,6 @@ output: pdf_document
 date: '2022-10-21'
 ---
 
-# INTRODUCTION
-
-
-# DATA ANALYSIS
 
 ## DATA PREPARATION
 
@@ -16,43 +12,136 @@ date: '2022-10-21'
 ```{r}
 library(VSURF)
 data(toys)
-head(toys)
 ```
 
+### Splitting toys dataset into Train and Test Datasets:
 
+```{r}
+## 80% of the sample size
+smp_size <- floor(0.8*(nrow(toys$x)))
+
+## set the seed to make the partition reproducible
+set.seed(123)
+sample.x <- sample(seq_len(nrow(toys$x)), size = smp_size)
+
+toys.y.train <- as.integer(toys.Y[sample.x])
+toys.x.train <- toys.X[sample.x, ]
+
+toys.y.test <- as.integer(toys.Y[sample.x])
+toys.x.test <- toys.X[sample.x, ]
+
+```
+
+# 1- Perform a linear model and apply a variable selection procedure
+## 1.1: Perform a linear model
+
+```{r}
+toys.lm1 <- lm(toys.y.train ~ toys.x.train)
+summary(toys.lm1)
+
+```
+
+## 1.2: apply a variable selection procedure
+### 1.2.1: Variable selection with Lasso:
+```{r}
+library(glmnet)
+#perform k-fold cross-validation to find optimal lambda value
+cv_toys <- cv.glmnet(toys.x.train, toys.y.train, alpha = 1)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda_Lasso <- cv_toys$lambda.min
+
+#find coefficients of LASSO best model
+toys.LASSO <- glmnet(toys.x.train, toys.y.train, alpha = 1, lambda = best_lambda_Lasso)
+coef(toys.LASSO)
+
+```
+
+### 1.2.3: Variable selection with Ridge:
+```{r}
+#perform k-fold cross-validation to find optimal lambda value
+cv_toys <- cv.glmnet(toys.x.train, toys.y.train, alpha = 0)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda_Ridge <- cv_toys$lambda.min
+
+toys.Ridge = glmnet(toys.x.train, toys.y.train, nlambda = 25, alpha = 0, family = 'gaussian', lambda = best_lambda_Ridge)
+
+
+coef(toys.Ridge)
+```
+
+# 2: Evaluate the quality of this model by test error:
+## 2.1: Lasso selection
+```{r}
+#use fitted best model to make predictions
+toys.LASSO.y_predicted <- predict(toys.LASSO, newx=toys.x.test)
+
+#find Mean Squared Error
+MSE_LASSO <- mean((toys.y.test - toys.LASSO.y_predicted)^2)
+
+
+MSE_LASSO
+```
+
+## 2.2:Ridge selection:
+```{r}
+#use fitted best model to make predictions
+toys.Ridge.y_predicted <- predict(toys.Ridge, newx=toys.x.test)
+
+#find Mean Squared Error
+MSE_Ridge <- mean((toys.y.test - toys.Ridge.y_predicted)^2)
+
+
+MSE_Ridge
+```
+# 3:
+## 3.1: CART model
 ```{r}
 ```
 
-```{r}
-
-```
 
 
 
-## DATA VIZUALISATION
+## 3.2: Random forest model
 ```{r}
 ```
 
 
-```{r}
-```
 
-```{r}
 
-```
-
-## DATA MODELING
+### 3.3.1: Evaluation of CART model's performance
 ```{r}
 ```
 
 
+
+### 3.3.1: Evaluation of Random forest model's performance
 ```{r}
 ```
 
+# 4:
+## 4.1: VSURF procedure
 ```{r}
-
 ```
 
 
-# CONCLUSION
+
+## 4.2: Final model based on VSURF
+```{r}
+```
+
+
+
+## 4.3: Evaluation the quality of this final model
+```{r}
+```
+
+# 5: What can you say?
+
+
+# 6: Repeat also of this 50 times. What can you say?
+
+
+
 

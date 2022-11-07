@@ -48,27 +48,69 @@ summary(Fund$X)
 
 ## DATA VIZUALISATION
 ```{r}
+hist(Fund$X)
 ```
 
 
 ```{r}
+plot(Y~X, data = Fund)
 ```
 
 ```{r}
+Fund.LM <- lm(Y~X, data = Fund)
+summary(Fund.LM)
 
 ```
 
 ## DATA MODELING
 ```{r}
+
+par(mfrow=c(2,2))
+plot(Fund.LM)
+par(mfrow=c(1,1))
 ```
 
 
 ```{r}
+library(ggplot2)
+Fund.graph<-ggplot(Fund, aes(X, Y))+geom_point()
+Fund.graph
 ```
 
 ```{r}
+Fund.graph <- Fund.graph + geom_smooth(method="lm", col="black")
+
+Fund.graph
 
 ```
+
+```{r}
+Fund.pred <- predict(Fund.LM, interval = "prediction")
+mydata <- cbind(Fund, Fund.pred)
+Fund.graph <- ggplot(mydata, aes(X, Y))+geom_point() + geom_smooth(method="lm", col="black")
+# Add prediction intervals
+Fund.graph_CI <- Fund.graph + geom_line(aes(y = lwr), color = "red", linetype = "dashed")+
+    geom_line(aes(y = upr), color = "red", linetype = "dashed")
+Fund.graph_CI
+```
+
+```{r}
+tt <- table(Fund$X,Fund$Y)
+test <- fisher.test(Fund, simulate.p.value=TRUE)
+test
+
+```
+
+```{r}
+help(lm)
+
+```
+
+
+
+
+
+
 
 
 # CONCLUSION
