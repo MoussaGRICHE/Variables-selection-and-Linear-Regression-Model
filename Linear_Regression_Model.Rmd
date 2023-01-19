@@ -1,0 +1,279 @@
+---
+title: "Linear_Regression_Model"
+output: pdf_document
+date: '2022-10-21'
+
+
+---
+
+
+## Upload Data
+```{r}
+Fund <- read.table(file="./fund.txt", header = FALSE)
+```
+
+
+```{r}
+head(Fund)
+```
+
+```{r}
+library(dplyr, quietly = TRUE)
+Fund <- Fund %>% dplyr::rename(Y = V1, X = V2)
+```
+
+```{r}
+head(Fund)
+```
+```{r}
+summary(Fund$Y)
+```
+
+```{r}
+summary(Fund$X)
+```
+
+## Plotting the data
+
+
+
+```{r}
+plot(Fund$Y~Fund$X, pch = 16)
+legend("topright", legend=c("Data" ),col=c("black"),pch=16, cex=0.8)
+```
+
+## 1.1 Computing the estimators of the linear model:
+
+The regression model that explain the relationship between the response variable (Y) and the explanatory variable (X) is writing as following:
+$$
+Y = \beta_{0} + \beta_{1}X + \varepsilon_{i}
+$$
+where:
+$$
+\varepsilon_{i} \ is \ the \ nose \ and \ assume \ that \ respects \ the \ following \ assumptions 
+$$
+$$\\$$
+1-
+$$
+\\
+\forall i\in \left \{ 1,...,n \right \}, \ E\left [ \varepsilon _{i} \right ]=0
+$$
+2-
+$$
+\\
+\forall i\in \left \{ 1,...,n \right \}, \ V\left [ \varepsilon _{i} \right ]=\sigma ^{2}
+$$
+3-
+$$
+\\
+\forall i\in \left \{ 1,...,n \right \}, \forall k\in \left \{ 1,...,n \right \}, if \ i\neq k \Rightarrow  \ Cov\left ( \varepsilon _{i},\varepsilon _{k} \right )=0
+$$
+4-
+$$
+\\
+\\\forall i\in \left \{ 1,...,n \right \}, \ \varepsilon _{i}\sim N(0,\sigma ^{2})
+$$
+
+
+To fit the model, we should estimate the parameters B0 and B1.
+
+We could estimate B0 and B1 with two main methods:
+$$\\$$
+1- Ordinary Least Square (OLS)
+$$\\$$
+2- Maximum Likelihood
+
+In our case, I will use the OLS method to estimate these parameters.
+Using OLS, the formula to estimate B0 and B1 is done as following:
+
+$$
+\hat{\beta_{1}}=\tfrac{\sum _{i=1}^{n} (y_{i}-\bar{y_{n}})(x_{i}-\bar{x_{n}})}{\sum _{i=1}^{n}(x_{i}-\bar{x_{n}})^{2}}
+$$
+$$
+\\
+\hat{\beta_{0}}=\bar{y_{n}}-\hat{\beta_{1}}\bar{x_{n}}
+$$
+
+
+
+Where: 
+$$
+\bar{X_{n}} = \frac{1}{n}\sum _{i=1}^{n} x_{i}
+$$
+$$
+\\
+\bar{Y_{n}} = \frac{1}{n}\sum _{i=1}^{n} y_{i}
+$$
+
+```{r}
+n <- length(Fund$X)
+X_n.barre <- (1/n) * sum(Fund$X)
+Y_n.barre <- (1/n) * sum(Fund$Y)
+```
+
+## Paramaters' estimation:
+
+```{r}
+
+B_1.hate = sum((Fund$Y-Y_n.barre) *(Fund$X-X_n.barre)) / sum((Fund$X-X_n.barre)^2)
+B_0.hate = Y_n.barre - B_1.hate*X_n.barre
+
+cat("Coefficients:
+               Estimate \n",
+    "(Intercepte) ", B_0.hate, "\n",
+    "X           ", B_1.hate)
+
+```
+So, our model can be writing as following:
+
+
+$$
+Y = 0.6606614 -0.3320686X + \varepsilon_{i}
+$$
+
+
+## Computing the fitted values of Y:
+
+```{r}
+Pred.Y <- 0.6606614 -0.3320686*Fund$X
+```
+
+## Mean Squared Error:
+```{r}
+
+MSE <- sum((Fund$Y-Pred.Y)^2)/n
+
+cat("The Mean Squared Error of the fitted model equal to:",MSE)
+```
+
+## Parameters' Confidence Intervals:
+
+
+
+$$
+[\hat{\beta_{0}} - \hat{\sigma _{n}}\sqrt{(\frac{1}{n}+\frac{\bar{X_{n}}^{2}}{\sum (x_{i}-\bar{X_{n}})^{2}})}t_{1-\frac{\alpha }{2},n-2}\ , \ \hat{\beta_{0}} + \hat{\sigma _{n}}\sqrt{(\frac{1}{n}+\frac{\bar{X_{n}}^{2}}{\sum (x_{i}-\bar{X_{n}})^{2}})}t_{1-\frac{\alpha }{2},n-2}]
+$$
+
+Now, we should calculate the confidence interval for B1 in order to know if we could assume that B1 could take the value 0, so there is no linear relationship between Y and X.
+
+The confidence interval of B1 can be writing as following:
+$$
+[ \hat{\beta_{1}} - \frac{\hat{\sigma _{n}}}{\sqrt{\sum (x_{i}-\bar{X_{n}})^{2}}}t_{1-\frac{\alpha }{2},n-2} , \hat{\beta_{1}} + \frac{\hat{\sigma _{n}}}{\sqrt{\sum (x_{i}-\bar{X_{n}})^{2}}}t_{1-\frac{\alpha }{2},n-2}]
+$$
+
+
+Where:
+
+$$
+\hat{\sigma _{n}} = \sqrt{\frac{\sum \hat{\varepsilon _{i}}^{2}}{(n-2)}}
+\\
+t_{1-\frac{\alpha }{2},n-2} \ {is \ the \ student \ test \ with \ {1-\frac{\alpha }{2} \ and \ n-2} \ degree \ of \ fredom}   
+$$
+
+## Calculating sigma_n.hate
+
+```{r}
+sigma_n.hate <- sqrt(sum((Fund$Y-Pred.Y)^2)/98)
+cat("The unbiased estimator of sigma_n is equal to:",sigma_n.hate)
+
+```
+
+## Calculating the confidence interval for B0
+
+```{r}
+
+CI_B0.Lower <- B_0.hate - sigma_n.hate * sqrt((1/n) + ((X_n.barre)^2/ sum((Fund$X-X_n.barre)^2))) * 
+  qt(0.975, (n-2))
+CI_B0.Upper <- B_0.hate + sigma_n.hate * sqrt((1/n) + ((X_n.barre)^2/ sum((Fund$X-X_n.barre)^2))) * 
+  qt(0.975, (n-2))
+cat("The confidence interval for BO is : (", CI_B0.Lower , ",", CI_B0.Upper, ")" )
+```
+
+## Calculating the confidence interval for B1
+
+```{r}
+
+CI_B1.Lower <- B_1.hate - sigma_n.hate / sqrt(sum((Fund$X-X_n.barre)^2)) * 
+  qt(0.975, (n-2))
+CI_B1.Upper <- B_1.hate + sigma_n.hate / sqrt(sum((Fund$X-X_n.barre)^2)) * 
+  qt(0.975, (n-2))
+cat("The confidence interval for B1 is : (", CI_B1.Lower , ",", CI_B1.Upper, ")" )
+```
+
+## 1.2- The representation of the cloud of points and of the regression curve:
+
+## Plotting the fitted model:
+```{r}
+plot(Fund$Y~Fund$X, pch = 16)
+lines(Fund$X, Pred.Y, type = "l", col="red")
+legend("topright", legend=c("Data","Regression curve" ),col=c("black","red"),
+       lty = c(NA,1),pch=c(16, NA), cex=0.8)
+```
+
+## 1.3- The curves associated to the confidence interval for the prediction:
+
+
+## Calculating the confidence interval for the predicted values :
+
+The confidence interval of the predicted values could be calculated using the following formula:
+
+$$
+[\hat{y}_{h} - \sqrt{MSE\times (1+\frac{1}{n}+\frac{(x_{h}-\bar{X_{n}})^{2}}{\sum (x_{i}-\bar{X_{n}})^{2}}})\ t_{1-\frac{\alpha }{2},n-2}\ , \hat{y}_{h} + \sqrt{MSE\times (1+\frac{1}{n}+\frac{(x_{h}-\bar{X_{n}})^{2}}{\sum (x_{i}-\bar{X_{n}})^{2}}})\ t_{1-\frac{\alpha }{2},n-2}]
+$$
+Where:
+
+
+
+```{r}
+Pred.Y.CI_Lower <- Pred.Y - sqrt ( MSE * (1 + (1/n) + 
+                                            ((Fund$X - X_n.barre)^2/
+                                              sum((Fund$X-X_n.barre)^2)))) * qt(0.975, (n-2))
+Pred.Y.CI_Upper <- Pred.Y + sqrt ( MSE * (1 + (1/n) + 
+                                            ((Fund$X - X_n.barre)^2/ 
+                                              sum((Fund$X-X_n.barre)^2)))) * qt(0.975, (n-2))
+
+
+Pred.Y.CI <- matrix(nrow = n, ncol = 3, dimnames = 
+                      list(c(1:n),c("Pred.Y","Pred.Y.CI_Lower","Pred.Y.CI_Upper")))
+Pred.Y.CI[,1] <- Pred.Y
+Pred.Y.CI[,2] <- Pred.Y.CI_Lower
+Pred.Y.CI[,3] <- Pred.Y.CI_Upper
+
+head(Pred.Y.CI)
+```
+
+## Plotting the curves associated to the confidence interval for the prediction:
+
+```{r}
+plot(Fund$Y~Fund$X, pch = 16)
+lines(Fund$X, Pred.Y, type = "l", col="red")
+lines(Fund$X, Pred.Y.CI_Lower, type = "l" , col="green")
+lines(Fund$X, Pred.Y.CI_Upper, type = "l" , col="blue")
+legend("topright", legend=c("Data","Regression curve", "Confidence interval lower curve",
+                            "Confidence interval upper curve" ),col=c("black","red","green",
+                                                                     "blue"),lty=c(NA,1,1,1),
+       pch=c(16, NA, NA, NA), cex=0.8)
+```
+
+## 2- The Fisher test:
+
+```{r}
+
+LSE_F = sum((Fund$Y-Pred.Y)^2)    #Least squared error of the fitted model
+LSE_R = sum((Fund$Y-Y_n.barre)^2) #Least squared error of the reduced model (yi = B0 + epsi)
+
+MSR = (LSE_R - LSE_F)/((n-1)-(n-2))
+MSE = LSE_F/(n-2)
+
+F_value = MSR/MSE
+P_value = df(F_value, (n-1)-(n-2), (n-2))
+cat("The P-Value is equal to:", P_value)
+```
+
+The P-value is to small (<0.05), so we could reject the null hypothesis (h0) and accept the alternative hypothesis (H1). Thus, this means that exist an influence of the explanatory variable on the response.
+
+
+
+
+
+

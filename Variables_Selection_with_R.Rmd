@@ -1,0 +1,262 @@
+---
+title: "Variables selection with R"
+geometry: margin=1cm
+output: pdf_document
+date: '2022-12-15'
+---
+
+
+## DATA PREPARATION
+
+### Upload Data
+
+```{r}
+library(VSURF)
+data(toys)
+```
+
+
+### Splitting toys dataset into Train and Test Datasets:
+
+```{r}
+set.seed(3101318)
+
+#use 80% of dataset as training set and 20% as test set
+sample <- sample(c(rep(TRUE, 0.8 * nrow(toys$x)), rep(FALSE, 0.2 * nrow(toys$x))))
+
+toys.y.train <- as.integer(toys$y[sample])
+toys.x.train <- as.data.frame(toys$x[sample, ])
+toys.y.test <- as.integer(toys$y[!sample])
+toys.x.test <- as.data.frame(toys$x[!sample, ])
+
+```
+
+
+# 1- Perform a linear model and apply a variable selection procedure
+## 1.1: Perform a linear model
+
+```{r}
+toys.lm1 <- lm(toys.y.train~., data=toys.x.train)
+summary(toys.lm1)
+```
+
+We could see by appling a linear regression model on toys training data set that only 80 parameters are estimated and lm function failed to calculate Std. Error,  t-value and Pr(>|t|). The reason for that is that the data set contains 200 features and 80 rows (training set) which is few observations for lot of features. We need to have at least 200 observations (rows) to perform a correct estimation with lm function.
+
+## 1.2: apply a variable selection procedure
+In order to solve the problem of of lack of data, we could do a variable selection to select the important features. 
+
+
+### 1.2.1: Variable selection with Lasso
+```{r}
+library(glmnet)
+#perform k-fold cross-validation to find optimal lambda value
+cv_toys <- cv.glmnet(as.matrix(toys.x.train), toys.y.train, alpha = 1)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda_Lasso <- cv_toys$lambda.min
+
+#find coefficients of LASSO best model
+toys.LASSO <- glmnet(toys.x.train, toys.y.train, alpha = 1, lambda = best_lambda_Lasso)
+coef(toys.LASSO)
+```
+The LASSO method has selected only 6 variables plus the intercept and has estimated their parameters.
+
+
+
+### 1.2.3: Variable selection with Ridge
+```{r}
+#perform k-fold cross-validation to find optimal lambda value
+cv_toys <- cv.glmnet(as.matrix(toys.x.train), toys.y.train, alpha = 0)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda_Ridge <- cv_toys$lambda.min
+
+toys.Ridge = glmnet(toys.x.train, toys.y.train, nlambda = 25, alpha = 0, family = 'gaussian', 
+                    lambda = best_lambda_Ridge)
+
+
+coef(toys.Ridge)
+```
+The Ridge method has selected all the variables and has estimated their parameters.
+
+
+# 2: Evaluate the quality of this model by test error
+
+In order to select the better model between LASSO and Ridge, we should calculate the Mean Squared Error based on the test data set and select the one with the smallest MSE.
+
+## 2.1: Lasso selection
+```{r}
+#use fitted best model to make predictions
+toys.LASSO.y_predicted <- predict(toys.LASSO, newx=as.matrix(toys.x.test))
+
+#find Mean Squared Error
+MSE_LASSO <- mean((toys.y.test - toys.LASSO.y_predicted)^2)
+
+cat("Mean squared error of the LASSO model equal to:", MSE_LASSO )
+
+```
+
+## 2.2:Ridge selection
+```{r}
+#use fitted best model to make predictions
+toys.Ridge.y_predicted <- predict(toys.Ridge, newx=as.matrix(toys.x.test))
+
+#find Mean Squared Error
+MSE_Ridge <- mean((toys.y.test - toys.Ridge.y_predicted)^2)
+
+cat("Mean squared error of the Ridge model equal to:", MSE_Ridge )
+
+```
+From the calculated MSE, we could say that the LASSO model is better then Ridge with toys data set (MSE_LASSO = 0.037 < 0.25 = MSE_Ridge).
+
+
+
+# 3: CART model and Random Forest one
+## 3.1: CART model
+```{r}
+library(rpart)
+library(rpart.plot)
+toys.CART <- rpart(toys.y.train~. , data=toys.x.train)
+summary(toys.CART)
+rpart.plot(toys.CART)
+barplot(toys.CART$variable.importance,horiz = T,las=1, main="Variables selection by CART Model")
+
+```
+
+The CART model has selected the important variables by splitting the training set on 3 times. Based on this, CART model has selected 14 important variables 
+
+
+## 3.2: Random forest model
+```{r}
+library(randomForest)
+toys.RF=randomForest(toys.y.train~. , data=toys.x.train, ntree = 100)
+summary(toys.RF)
+varImpPlot(toys.RF, main="Variables selection by Random Forest Model")
+toys.RF
+```
+
+
+
+
+### 3.3.1: Evaluation of CART model's performance
+```{r}
+toys.CART_predicted = predict(toys.CART,  toys.x.test)
+toys.CART.mse = mean( (toys.CART_predicted - toys.y.test)^2 )
+cat("Mean squared error of the CART model equal to:",toys.CART.mse )
+```
+### 3.3.1: Evaluation of Random forest model's performance
+```{r}
+toys.RF_predicted = predict(toys.RF, toys.x.test)
+toys.RF.mse = mean( (toys.RF_predicted - toys.y.test)^2 )
+cat("Mean squared error of the random forest model equal to:",toys.RF.mse )
+```
+Between CART model and Random Forest one, we could say that Random Forest model looks better than CART model since Random Forest MSE is lower than CART MSE (both MSEs were calculated on the test dataset)
+
+
+# 4: VSURF procedure
+## 4.1: Explination of VSURF procedure
+
+VSURF is a variables selection procedure based on Random Forest and it runs on 3 steps and gives two subsets of variables.
+
+
+## 4.2: VSURF procedure
+```{r}
+toys.VSURF=VSURF(toys.x.train, as.factor(toys.y.train), parallel = TRUE, mtry = 100)
+```
+
+
+```{r}
+summary(toys.VSURF)
+```
+
+
+
+## 4.3: Final model based on VSURF
+The VSURF method pass by 3 steps to get the final model.
+
+1- The thresholding step: eliminate irrelevant variables from the dataset
+```{r}
+toys.VSURF$varselect.thres
+
+toys.VSURF$min.thres
+```
+
+In our case, the variables mentioned above are selected in the thresholding step. The threshold calculated by CART model and used to eliminate the variable is equal to 7.344188e-05 (may be this threshold has a bit changed when we run the code again).  
+
+2- The interpretation step: select all variables related to the response for interpretation purpose.
+
+```{r}
+toys.VSURF$varselect.interp
+```
+In our case, the variables mentioned above are selected in the interpretation step.
+
+
+3- The prediction step: select variables by eliminating redundancy in the set of variables selected by the second step, for prediction purpose.
+
+```{r}
+toys.VSURF$varselect.pred
+```
+In our case, the variables mentioned above are selected in the prediction step.
+
+Thus, the final model is based on variables number cited above (variables 3 2 5 6 1 ).
+
+
+## 4.4: Evaluation the quality of this final model
+```{r}
+toys.VSURF_predicted = predict(toys.VSURF, toys.x.test, step = "thres")
+toys.VSURF_predicted <- as.double(unlist(toys.VSURF_predicted))
+toys.VSURF.thres.mse = mean((toys.VSURF_predicted - toys.y.test)^2 )
+cat("Mean squared error of the VSURF model at thresholding step equal to:",toys.VSURF.thres.mse )
+```
+```{r}
+toys.VSURF_predicted = predict(toys.VSURF, toys.x.test, step = "interp")
+toys.VSURF_predicted <- as.double(unlist(toys.VSURF_predicted))
+toys.VSURF.interp.mse = mean((toys.VSURF_predicted - toys.y.test)^2 )
+cat("Mean squared error of the VSURF model at interpretation step equal to:",toys.VSURF.interp.mse )
+```
+```{r}
+toys.VSURF_predicted = predict(toys.VSURF, toys.x.test, step = "pred")
+toys.VSURF_predicted <- as.double(unlist(toys.VSURF_predicted))
+toys.VSURF.pred.mse = mean((toys.VSURF_predicted - toys.y.test)^2 )
+cat("Mean squared error of the final VSURF model equal to:",toys.VSURF.pred.mse )
+```
+
+
+
+# 5: What can we say?
+
+The MSE at thresholding step is equal to MSE of the Random Forest model. The MSE at interpretation and prediction steps are lowest and the variables selection are better. In our case, the final model is perfect because the MSE on the test dataset equal to 0.
+
+# 6: Repetition of the VSURF Proceduree
+
+## 6.1: Repetition of the VSURF Procedure 50 times
+
+```{r}
+for (i in 1:50) {
+  cat("\n", "######################## ", i, "##########################", "\n")
+  toys.VSURF=VSURF(toys.x.train, as.factor(toys.y.train), parallel = TRUE, mtry = 100)
+  summary(toys.VSURF)
+  
+  toys.VSURF_predicted = predict(toys.VSURF, toys.x.test, step = "thres")
+  toys.VSURF_predicted <- as.double(unlist(toys.VSURF_predicted))
+  toys.VSURF.thres.mse = mean((toys.VSURF_predicted - toys.y.test)^2 )
+  cat("\n", "Mean squared error of the VSURF model at thresholding step equal to:",toys.VSURF.thres.mse, "\n" )
+  
+  toys.VSURF_predicted = predict(toys.VSURF, toys.x.test, step = "interp")
+  toys.VSURF_predicted <- as.double(unlist(toys.VSURF_predicted))
+  toys.VSURF.interp.mse = mean((toys.VSURF_predicted - toys.y.test)^2 )
+  cat("\n", "Mean squared error of the VSURF model at interpretation step equal to:",toys.VSURF.interp.mse, "\n") 
+  
+  toys.VSURF_predicted = predict(toys.VSURF, toys.x.test, step = "pred")
+  toys.VSURF_predicted <- as.double(unlist(toys.VSURF_predicted))
+  toys.VSURF.pred.mse = mean((toys.VSURF_predicted - toys.y.test)^2 )
+  cat("\n", "Mean squared error of the final VSURF model equal to:",toys.VSURF.pred.mse, "\n" )
+}
+```
+
+## 6.2: Summary
+
+We can say, after calculating the same steps 50 times, that VSURF selects neither the same number of variables nor the same variables each time and the MSE of each step could change. 
+We could say that there is some randomness in the procedure. To fix this issue, we should fix the seed of the randomness to get reproducible results.
+
+
